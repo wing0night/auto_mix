@@ -7,3 +7,4 @@ from .rainbow import RainbowCandyColorGroup
 from .starrynight import VanGoghStarryNightColorGroup
 from .light import PastelColorGroup
 from .rainynight import RainyNightColorGroup
+from .nightstar import StarryNightTheme

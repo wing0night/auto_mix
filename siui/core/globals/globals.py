@@ -1,7 +1,7 @@
 import time
 
 from siui.core.color import SiColor
-from siui.gui.color_group import DarkColorGroup, BrightColorGroup, HalloweenColorGroup, SummerBrightColorGroup, RainbowCandyColorGroup, VanGoghStarryNightColorGroup, PastelColorGroup, RainyNightColorGroup
+from siui.gui.color_group import DarkColorGroup, BrightColorGroup, HalloweenColorGroup, SummerBrightColorGroup, RainbowCandyColorGroup, VanGoghStarryNightColorGroup, PastelColorGroup, RainyNightColorGroup, StarryNightTheme
 from siui.gui.font import GlobalFontDict
 from siui.gui.icons.parser import SiGlobalIconPack
 
@@ -75,6 +75,15 @@ class SiliconUIGlobal:
                 pass
         return
 
+    def switch_theme(self):
+        if self.colors == PastelColorGroup():
+            self.colors = StarryNightTheme()
+        else:
+            self.colors = PastelColorGroup()
+            
+
+    
+
 
 class SiGlobal:
     """
@@ -82,6 +91,7 @@ class SiGlobal:
     在 siui 模块被第一次导入时初始化 .siui 下的变量
     """
     siui = SiliconUIGlobal()
+        
 
 
 class NewGlobal:

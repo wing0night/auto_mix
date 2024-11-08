@@ -9,6 +9,7 @@ from siui.core.globals import SiGlobal
 from siui.core.silicon import Si
 from siui.gui.color_group import SiColorGroup
 from siui.gui.font import GlobalFont, SiFont
+from siui.gui.color_group import DarkColorGroup, PastelColorGroup
 
 
 class SiPushButton(ABCPushButton):
@@ -480,3 +481,8 @@ class SiSwitch(QAbstractButton):
     def _toggle_handler(self, is_checked):
         self._set_animation_target(is_checked)
         self.toggle_animation.try_to_start()
+        if is_checked is True:
+            SiGlobal.siui.colors = DarkColorGroup()
+        else:
+            SiGlobal.siui.colors = PastelColorGroup()
+        SiGlobal.siui.reloadAllWindowsStyleSheet()
