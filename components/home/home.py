@@ -31,6 +31,7 @@ from .components.themed_option_card import ThemedOptionCardPlane
 
 com_port = "com1" # 默认串口号（全局变量）
 com_baud = 115200 # 默认波特率（全局变量）
+com = mycom() # 创建串口对象
 
 
 class Homepage(SiPage):
@@ -131,6 +132,7 @@ class Homepage(SiPage):
         self.titled_widget_group.addWidget(WidgetsExamplePanel(self))
 
         self.titled_widget_group.addTitle("Test Motors")
+        self.titled_widget_group.addWidget(WidgetsTestMotor(self))
 
         self.titled_widget_group.addPlaceholder(64)
 
@@ -171,23 +173,17 @@ class WidgetsExampleOptionCardPlane(SiOptionCardPlane):
 
 class WidgetsExamplePanel(SiDenseVContainer):
     def __init__(self, *args, **kwargs):
+        global com
+        
         super().__init__(*args, **kwargs)
 
         self.setAdjustWidgetsSize(True)
         self.setSpacing(12)
-        
-        # Qt 串口类
-        self.com = mycom()
 
         # 第一个水平容器
         container_h_a = SiDenseHContainer(self)
         container_h_a.setFixedHeight(128)
         container_h_a.setAdjustWidgetsSize(True)
-        
-        # 第一个水平容器
-        container_h_a2 = SiDenseHContainer(self)
-        container_h_a2.setFixedHeight(64)
-        container_h_a2.setAdjustWidgetsSize(True)
 
         # 上面的两个选项卡，按钮和开关
         # 按钮
@@ -197,7 +193,6 @@ class WidgetsExamplePanel(SiDenseVContainer):
         option_card_button_container_h = SiDenseHContainer(self)
         option_card_button_container_h.setFixedHeight(32)
 
-        
         
         # 选取com口
         self.package_selection_combobox = SiComboBox(self)
@@ -297,8 +292,8 @@ class WidgetsExamplePanel(SiDenseVContainer):
         #### com Open Code here ####
         comName = com_port
         comBaud = com_baud
-        self.com.open(comName)
-        self.com.setrate(int(comBaud))
+        com.open(comName)
+        com.setrate(int(comBaud))
         print(com_port)
         print(com_baud)
         print("com opened")
@@ -306,11 +301,135 @@ class WidgetsExamplePanel(SiDenseVContainer):
     
     def close_com(self):
         #### com Close Code here ####
-        self.com.close()
+        com.close()
         print("com closed")
         self.show_com_info.setText(f"com closed")
         
+class WidgetsTestMotor(SiDenseVContainer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        global com
+        global com_port
+        global com_baud
 
+        self.setAdjustWidgetsSize(True)
+        self.setSpacing(12)
+        
+        self.motor = "Motor1"
+
+        # 第一个水平容器
+        container_h_a = SiDenseHContainer(self)
+        container_h_a.setFixedHeight(128)
+        container_h_a.setAdjustWidgetsSize(True)
+
+        # 上面的两个选项卡，按钮和开关
+        # 按钮
+        self.option_card_button = WidgetsExampleOptionCardPlane(self)
+        self.option_card_button.setTitle("Check motor connection")
+
+        option_card_button_container_h = SiDenseHContainer(self)
+        option_card_button_container_h.setFixedHeight(32)
+
+        self.com_data = ""
+        # 选取电机名称
+        
+        self.package_selection_motor = SiComboBox(self)
+        self.package_selection_motor.resize(128, 32)
+        self.package_selection_motor.addOption("Motor1")
+        self.package_selection_motor.addOption("Motor2")
+        # 设置槽函数
+        self.package_selection_motor.valueChanged.connect(self.motor_chosen)
+        self.package_selection_motor.menu().setShowIcon(False)
+        self.package_selection_motor.colorGroup().assign(
+            SiColor.INTERFACE_BG_B, self.colorGroup().fromToken(SiColor.INTERFACE_BG_A))
+        self.package_selection_motor.colorGroup().assign(
+            SiColor.INTERFACE_BG_D, self.colorGroup().fromToken(SiColor.INTERFACE_BG_C))
+        
+        
+        # 电机正向转动
+        button_rotate = SiPushButton(self)
+        button_rotate.resize(128, 32)
+        button_rotate.attachment().setText("forward rotate")
+        button_rotate.mouseReleaseEvent = lambda event: self.rotate(self.motor)
+        
+        # 电机逆向转动
+        button_reverse = SiPushButton(self)
+        button_reverse.resize(128, 32)
+        button_reverse.attachment().setText("back rotate")
+        button_reverse.mouseReleaseEvent = lambda event: self.reverse()
+        
+        # 电机正向加速
+        button_speed = SiPushButton(self)
+        button_speed.resize(128, 32)
+        button_speed.attachment().setText("forward speed")
+        button_speed.mouseReleaseEvent = lambda event: self.speed()
+        
+        # 电机逆向加速
+        button_respeed = SiPushButton(self)
+        button_respeed.resize(128, 32)
+        button_respeed.attachment().setText("back speed")
+        button_respeed.mouseReleaseEvent = lambda event: self.respeed()
+        
+        # 电机转速信息
+        self.show_com_info = SiLabel(self)
+        self.show_com_info.setAlignment(Qt.AlignCenter)
+        self.show_com_info.setFixedSize(200, 32)
+        self.show_com_info.setSiliconWidgetFlag(Si.AdjustSizeOnTextChanged)
+        self.show_com_info.setStyleSheet(f"color: {self.colorGroup().fromToken(SiColor.TEXT_D)}")
+        
+        # 将com口选取添加到布局
+        option_card_button_container_h.addWidget(self.package_selection_motor)
+        # 将波特率选取添加到布局
+        option_card_button_container_h.addWidget(button_rotate)
+        # 打开com口按钮添加到布局
+        option_card_button_container_h.addWidget(button_reverse)
+        # 关闭com口按钮添加到布局
+        option_card_button_container_h.addWidget(button_speed)
+        # 关闭com口按钮添加到布局
+        option_card_button_container_h.addWidget(button_respeed)
+        # 显示com口信息添加到布局
+        option_card_button_container_h.addWidget(self.show_com_info)
+        
+        self.option_card_button.body().addWidget(option_card_button_container_h)
+        
+
+        # 添加到第一个水平容器
+        container_h_a.addWidget(self.option_card_button)
+
+        # 添加两个水平容器到自己
+        self.addWidget(container_h_a)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+        self.option_card_button.setFixedWidth(event.size().width() - 50 - 16)
+    
+    # menu中被选中的值将会自动被传递为槽函数的参数（com）
+    def motor_chosen(self, motor):
+        self.motor = motor
+    
+    def rotate(self, motor):
+        com.com_data = motor+"forward_rotate"
+        com.Com_Send_Data()
+        self.show_com_info.setText(f"{motor} forward rotate")
+    
+    def reverse(self):
+        self.textEdit_Send.setText("reverse")
+        com.Com_Send_Data()
+        self.show_com_info.setText(f"reverse")
+    
+    def speed(self):
+        self.textEdit_Send.setText("speed")
+        com.Com_Send_Data()
+        self.show_com_info.setText("speed")
+    
+    def respeed(self):
+        self.textEdit_Send.setText("respeed")
+        com.Com_Send_Data()
+        self.show_com_info.setText("respeed")
+        
+        
 
 
 
