@@ -12,6 +12,7 @@ from siui.core.globals import SiGlobal
 from siui.core.silicon import Si
 
 
+
 class ABCSiMenu(SiWidget):
     indexChanged = pyqtSignal(int)
     valueChanged = pyqtSignal(object)

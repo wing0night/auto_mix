@@ -8,6 +8,7 @@ from siui.core.globals import SiGlobal
 from siui.core.silicon import Si
 
 
+
 class ThemedOptionCardPlane(SiOptionCardPlane):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

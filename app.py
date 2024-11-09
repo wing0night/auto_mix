@@ -13,9 +13,9 @@ siui.gui.set_scale_factor(1)
 
 def show_version_message(window):
     window.LayerRightMessageSidebar().send(
-        title="Welcome to Silicon UI Gallery",
-        text="You are currently running v1.14.514\n"
-             "Click this message box to check out what's new.",
+        title="Welcome to AutoMix!",
+        text="A powerful sample pretreatment platform\n"
+             "You are currently running v1.0",
         msg_type=1,
         icon=SiGlobal.siui.iconpack.get("ic_fluent_hand_wave_regular"),
         fold_after=5000,

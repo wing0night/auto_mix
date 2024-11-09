@@ -2,12 +2,15 @@ from PyQt5.Qt import QColor
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 import PyQt5.QtWidgets, PyQt5.QtCore
+from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
+from .components.com import mycom
 
 from siui.components import SiPixLabel
 from siui.components.option_card import SiOptionCardLinear, SiOptionCardPlane
 from siui.components.page import SiPage
 from siui.components.slider import SiSliderH
 from siui.components.titled_widget_group import SiTitledWidgetGroup
+from siui.components.combobox import SiComboBox
 from siui.components.widgets import (
     SiDenseHContainer,
     SiDenseVContainer,
@@ -26,6 +29,9 @@ from siui.gui import SiFont, GlobalFont
 
 from .components.themed_option_card import ThemedOptionCardPlane
 
+com_port = "com1" # 默认串口号（全局变量）
+com_baud = 115200 # 默认波特率（全局变量）
+
 
 class Homepage(SiPage):
     def __init__(self, *args, **kwargs):
@@ -33,6 +39,7 @@ class Homepage(SiPage):
 
         # 滚动区域
         self.scroll_container = SiTitledWidgetGroup(self)
+        
 
         # 整个顶部
         self.head_area = SiLabel(self)
@@ -123,8 +130,7 @@ class Homepage(SiPage):
         self.titled_widget_group.addTitle("Check connection")
         self.titled_widget_group.addWidget(WidgetsExamplePanel(self))
 
-        self.titled_widget_group.addTitle("Option Cards")
-        self.titled_widget_group.addWidget(OptionCardsExamplePanel(self))
+        self.titled_widget_group.addTitle("Test Motors")
 
         self.titled_widget_group.addPlaceholder(64)
 
@@ -134,6 +140,7 @@ class Homepage(SiPage):
 
         # 添加到页面
         self.setAttachment(self.scroll_container)
+        
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -168,26 +175,100 @@ class WidgetsExamplePanel(SiDenseVContainer):
 
         self.setAdjustWidgetsSize(True)
         self.setSpacing(12)
+        
+        # Qt 串口类
+        self.com = mycom()
 
         # 第一个水平容器
         container_h_a = SiDenseHContainer(self)
         container_h_a.setFixedHeight(128)
         container_h_a.setAdjustWidgetsSize(True)
+        
+        # 第一个水平容器
+        container_h_a2 = SiDenseHContainer(self)
+        container_h_a2.setFixedHeight(64)
+        container_h_a2.setAdjustWidgetsSize(True)
 
         # 上面的两个选项卡，按钮和开关
         # 按钮
         self.option_card_button = WidgetsExampleOptionCardPlane(self)
-        self.option_card_button.setTitle("Push Button")
+        self.option_card_button.setTitle("Check motor connection")
 
         option_card_button_container_h = SiDenseHContainer(self)
         option_card_button_container_h.setFixedHeight(32)
 
+        
+        
+        # 选取com口
+        self.package_selection_combobox = SiComboBox(self)
+        self.package_selection_combobox.resize(128, 32)
+        self.package_selection_combobox.addOption("com1")
+        self.package_selection_combobox.addOption("com2")
+        self.package_selection_combobox.addOption("com3")
+        self.package_selection_combobox.addOption("com4")
+        self.package_selection_combobox.addOption("com5")
+        self.package_selection_combobox.addOption("com6")
+        self.package_selection_combobox.addOption("com7")
+        # 设置槽函数
+        self.package_selection_combobox.valueChanged.connect(self.com_changed)
+        self.package_selection_combobox.menu().setShowIcon(False)
+        self.package_selection_combobox.colorGroup().assign(
+            SiColor.INTERFACE_BG_B, self.colorGroup().fromToken(SiColor.INTERFACE_BG_A))
+        self.package_selection_combobox.colorGroup().assign(
+            SiColor.INTERFACE_BG_D, self.colorGroup().fromToken(SiColor.INTERFACE_BG_C))
+        
+        # 选取波特率
+        self.baud_selection_combobox = SiComboBox(self)
+        self.baud_selection_combobox.resize(128, 32)
+        self.baud_selection_combobox.addOption("9600")
+        self.baud_selection_combobox.addOption("19200")
+        self.baud_selection_combobox.addOption("38400")
+        self.baud_selection_combobox.addOption("115200")
+        # 设置槽函数
+        self.baud_selection_combobox.valueChanged.connect(self.baud_changed)
+        self.baud_selection_combobox.menu().setShowIcon(False)
+        self.baud_selection_combobox.colorGroup().assign(
+            SiColor.INTERFACE_BG_B, self.colorGroup().fromToken(SiColor.INTERFACE_BG_A))
+        self.baud_selection_combobox.colorGroup().assign(
+            SiColor.INTERFACE_BG_D, self.colorGroup().fromToken(SiColor.INTERFACE_BG_C))
+        
+        # 打开com口按钮
+        button_opencom = SiPushButton(self)
+        button_opencom.resize(128, 32)
+        button_opencom.attachment().setText("Open com")
+        button_opencom.mouseReleaseEvent = lambda event: self.open_com()
+        
+        # 关闭com口按钮
+        button_closecom = SiPushButton(self)
+        button_closecom.resize(128, 32)
+        button_closecom.attachment().setText("Close com")
+        button_closecom.mouseReleaseEvent = lambda event: self.close_com()
+        
+        self.show_com_info = SiLabel(self)
+        self.show_com_info.setAlignment(Qt.AlignCenter)
+        self.show_com_info.setFixedSize(200, 32)
+        self.show_com_info.setSiliconWidgetFlag(Si.AdjustSizeOnTextChanged)
+        self.show_com_info.setStyleSheet(f"color: {self.colorGroup().fromToken(SiColor.TEXT_D)}")
+        
+        # 将com口选取添加到布局
+        option_card_button_container_h.addWidget(self.package_selection_combobox)
+        # 将波特率选取添加到布局
+        option_card_button_container_h.addWidget(self.baud_selection_combobox)
+        # 打开com口按钮添加到布局
+        option_card_button_container_h.addWidget(button_opencom)
+        # 关闭com口按钮添加到布局
+        option_card_button_container_h.addWidget(button_closecom)
+        # 显示com口信息添加到布局
+        option_card_button_container_h.addWidget(self.show_com_info)
+        # # 将长按退出添加到布局
+        # option_card_button_container_h.addWidget(button_c)
+        # container_h_a2.addWidget(self.package_selection_combobox)
+        self.option_card_button.body().addWidget(option_card_button_container_h)
+        
         # 长按确认按钮
         button_c = SiLongPressButton(self)
         button_c.resize(128, 32)
         button_c.attachment().setText("Quit")
-        option_card_button_container_h.addWidget(button_c)
-        self.option_card_button.body().addWidget(option_card_button_container_h)
 
         # 添加到第一个水平容器
         container_h_a.addWidget(self.option_card_button)
@@ -198,90 +279,38 @@ class WidgetsExamplePanel(SiDenseVContainer):
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
-        self.option_card_button.setFixedWidth(event.size().width() - 300 - 16)
+        self.option_card_button.setFixedWidth(event.size().width() - 50 - 16)
+    
+    # menu中被选中的值将会自动被传递为槽函数的参数（com）
+    def com_changed(self, com):
+        global com_port
+        # a = self.package_selection_combobox.menu().option
+        com_port = com
+    
+    def baud_changed(self, baud):
+        global com_baud
+        com_baud = baud
 
-class OptionCardsExamplePanel(SiDenseVContainer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def open_com(self):
+        global com_port
+        global com_baud
+        #### com Open Code here ####
+        comName = com_port
+        comBaud = com_baud
+        self.com.open(comName)
+        self.com.setrate(int(comBaud))
+        print(com_port)
+        print(com_baud)
+        print("com opened")
+        self.show_com_info.setText(f"com: {com_port} {com_baud} opened")
+    
+    def close_com(self):
+        #### com Close Code here ####
+        self.com.close()
+        print("com closed")
+        self.show_com_info.setText(f"com closed")
+        
 
-        self.setAdjustWidgetsSize(True)
-        self.setSpacing(12)
 
-        # 线性选项卡
-        attached_button_a = SiPushButton(self)
-        attached_button_a.resize(128, 32)
-        attached_button_a.attachment().setText("Attachment")
 
-        attached_button_b = SiPushButton(self)
-        attached_button_b.resize(32, 32)
-        attached_button_b.attachment().load(SiGlobal.siui.iconpack.get("ic_fluent_attach_regular"))
-
-        self.option_card_linear_attaching = SiOptionCardLinear(self)
-        self.option_card_linear_attaching.setTitle("Attach Widgets", "The linear option card provides a horizontal container where any control can be added,\nwith no limit on the number")
-        self.option_card_linear_attaching.load(SiGlobal.siui.iconpack.get("ic_fluent_attach_regular"))
-        self.option_card_linear_attaching.addWidget(attached_button_a)
-        self.option_card_linear_attaching.addWidget(attached_button_b)
-
-        # <- ADD
-        self.addWidget(self.option_card_linear_attaching)
-
-        # 平面选项卡
-        header_button = SiSimpleButton(self)
-        header_button.setFixedHeight(32)
-        header_button.attachment().setText("Header Attachment")
-        header_button.attachment().load(SiGlobal.siui.iconpack.get("ic_fluent_window_header_horizontal_regular"))
-        header_button.adjustSize()
-
-        body_label = SiLabel(self)
-        body_label.setSiliconWidgetFlag(Si.AdjustSizeOnTextChanged)
-        body_label.setStyleSheet("color: {}".format(SiGlobal.siui.colors["TEXT_B"]))
-        body_label.setText("SiOptionCardPlane provides three containers: header, body, and footer."
-                           "\nHeader and Footer are SiDenseHContainer, while body is a SiDenseVContainer."
-                           "\nHere is the body container, where you can realize your interface function. Enjoy it!")
-
-        footer_button_a = SiSimpleButton(self)
-        footer_button_a.resize(32, 32)
-        footer_button_a.attachment().load(SiGlobal.siui.iconpack.get("ic_fluent_pen_regular"))
-        footer_button_a.setHint("Draw")
-
-        footer_button_b = SiSimpleButton(self)
-        footer_button_b.resize(32, 32)
-        footer_button_b.attachment().load(SiGlobal.siui.iconpack.get("ic_fluent_eyedropper_regular"))
-        footer_button_b.setHint("Eyedropper")
-
-        footer_button_c = SiSimpleButton(self)
-        footer_button_c.resize(32, 32)
-        footer_button_c.attachment().load(SiGlobal.siui.iconpack.get("ic_fluent_save_regular"))
-        footer_button_c.setHint("Save")
-
-        self.option_card_plane_beginning = SiOptionCardPlane(self)
-        self.option_card_plane_beginning.setTitle("Plane Option Card")
-        self.option_card_plane_beginning.header().addWidget(header_button, side="right")
-        self.option_card_plane_beginning.body().addWidget(body_label, side="top")
-        self.option_card_plane_beginning.footer().setFixedHeight(64)
-        self.option_card_plane_beginning.footer().setSpacing(8)
-        self.option_card_plane_beginning.footer().setAlignment(Qt.AlignCenter)
-        self.option_card_plane_beginning.footer().addWidget(footer_button_a, side="left")
-        self.option_card_plane_beginning.footer().addWidget(footer_button_b, side="left")
-        self.option_card_plane_beginning.footer().addWidget(footer_button_c, side="left")
-        self.option_card_plane_beginning.adjustSize()
-
-        # <- ADD
-        self.addWidget(self.option_card_plane_beginning)
-
-        # 解释按钮
-        button_description = SiSimpleButton(self)
-        button_description.attachment().setText("See More")
-        button_description.attachment().load(SiGlobal.siui.iconpack.get("ic_fluent_apps_add_in_regular"))
-        button_description.colorGroup().assign(SiColor.BUTTON_OFF, "#2C2930")
-        button_description.colorGroup().assign(SiColor.BUTTON_ON, "#2C2930")
-        button_description.reloadStyleSheet()
-        button_description.resize(210, 32)
-
-        # 查看更多容器
-        container_v_button = SiDenseVContainer(self)
-        container_v_button.setAlignment(Qt.AlignCenter)
-        container_v_button.addWidget(button_description)
-
-        self.addWidget(container_v_button)
 
